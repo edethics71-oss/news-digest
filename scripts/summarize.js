@@ -14,9 +14,8 @@ export async function summarizeArticle({ title, description }, client) {
     config: {
       systemInstruction: SYSTEM_PROMPT,
       maxOutputTokens: 500,
-      // 단순 요약 작업이라 "생각(thinking)" 모드는 끈다. 켜두면 사고 과정이 출력 토큰 예산을 먼저 써버려
-      // 정작 답변이 중간에 잘리는 문제가 생긴다.
-      thinkingConfig: { thinkingBudget: 0 },
+      // flash-lite 계열은 모델마다 thinkingBudget 허용 범위가 달라 값을 잘못 넣으면 요청 자체가
+      // 거부된다. lite 모델은 기본적으로 thinking이 거의 꺼져 있으므로 아예 설정하지 않는다.
     },
   });
 
