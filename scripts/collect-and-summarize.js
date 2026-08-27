@@ -8,12 +8,25 @@ import { summarizeArticle } from "./summarize.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "data");
 // "정시"(제 시간에), "진로"(이동 경로) 등은 단독으로 쓰면 대입과 무관한 기사가 대량으로 섞이므로,
-// 대입 관련 문맥으로 좁혀지는 복합어를 사용한다.
-const KEYWORDS = ["대입", "수시모집", "정시모집", "진로진학"];
+// 단독으로 쓰지 않고 "대입"과 함께(두 단어 모두 포함) 검색하거나, 문맥이 좁혀지는 복합어를 사용한다.
+const KEYWORDS = [
+  "대입",
+  "대입 수시",
+  "대입 정시",
+  "학종",
+  "교과전형",
+  "수능",
+  "대교협",
+  "농어촌특별전형",
+  "기회균형특별전형",
+  "진로진학",
+];
 
-// Gemini 무료 티어는 모델당 분당 요청 수가 제한되어 있어, 한 번에 처리할 기사 수와 호출 간격을 제한한다.
-const MAX_ARTICLES_PER_RUN = 60;
-const GEMINI_CALL_INTERVAL_MS = 13000;
+// Gemini 무료 티어는 모델당 분당 요청 수(5회)가 제한되어 있다. 아래 값들은 그 한도 안에서 안전하게
+// 동작하면서도, 사용량이 갑자기 몰리는 날에도 실행이 몇 시간씩 걸리지 않도록 상한을 둔 것이다.
+const MAX_ARTICLES_PER_RUN = 30;
+const GEMINI_CALL_INTERVAL_MS = 15000; // 분당 5회(12초 간격) 한도보다 여유 있게
+const SUMMARIZE_TIME_BUDGET_MS = 8 * 60 * 1000; // 요약 단계 전체에 쓸 수 있는 최대 시간
 
 // 도메인 -> 언론사명 매핑. 목록에 없는 언론사는 도메인 이름을 그대로 표시한다.
 // 필요하면 이 목록에 언론사를 자유롭게 추가하면 된다.
@@ -105,8 +118,9 @@ function extractRetryDelaySeconds(message) {
   return match ? Number(match[1]) : null;
 }
 
-// Gemini 무료 티어 사용량 한도(429 RESOURCE_EXHAUSTED)에 걸리면, 서버가 안내하는 대기 시간만큼 쉬었다가 재시도한다.
-async function summarizeWithRetry(article, client, maxRetries = 3) {
+// Gemini 무료 티어 사용량 한도(429 RESOURCE_EXHAUSTED)에 걸리면, 서버가 안내하는 대기 시간만큼 쉬었다가
+// 재시도한다. 대기 시간에는 상한(20초)을 둬서, 서버가 큰 값을 돌려줘도 실행 시간이 과도해지지 않게 한다.
+async function summarizeWithRetry(article, client, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await summarizeArticle(article, client);
@@ -114,7 +128,7 @@ async function summarizeWithRetry(article, client, maxRetries = 3) {
       const isRateLimited = /RESOURCE_EXHAUSTED|"code":429/.test(err.message || "");
       if (!isRateLimited || attempt === maxRetries) throw err;
 
-      const waitSeconds = (extractRetryDelaySeconds(err.message) ?? 15) + 3;
+      const waitSeconds = Math.min((extractRetryDelaySeconds(err.message) ?? 15) + 3, 20);
       console.log(
         `  사용량 한도 초과, ${waitSeconds}초 대기 후 재시도합니다. (${attempt + 1}/${maxRetries})`
       );
@@ -201,8 +215,16 @@ async function main() {
 
   const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   const summarized = [];
+  const summarizeStartedAt = Date.now();
 
   for (let i = 0; i < articlesToSummarize.length; i++) {
+    if (Date.now() - summarizeStartedAt > SUMMARIZE_TIME_BUDGET_MS) {
+      console.log(
+        `  요약 시간 예산을 초과해 나머지 ${articlesToSummarize.length - i}건은 건너뜁니다.`
+      );
+      break;
+    }
+
     const article = articlesToSummarize[i];
     try {
       const summary = await summarizeWithRetry(article, client);

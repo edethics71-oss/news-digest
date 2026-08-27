@@ -132,7 +132,7 @@ GitHub Actions가 API 키를 안전하게 사용할 수 있도록, 코드가 아
 `scripts/collect-and-summarize.js` 파일 상단의 `KEYWORDS` 배열에 원하는 키워드를 추가/삭제하면 됩니다. 단, "정시"나 "진로"처럼 일상적으로도 흔히 쓰이는 단어를 단독으로 넣으면(예: "기차가 정시에 도착", "태풍 진로") 대입과 무관한 기사가 대량으로 섞여 들어올 수 있습니다. 되도록 "정시모집", "진로진학"처럼 문맥이 좁혀지는 복합어를 사용하는 것을 권장합니다.
 
 **Gemini 무료 사용량 한도(429 오류)에 걸려요.**
-Gemini 무료 티어는 모델당 분당 요청 수가 제한되어 있습니다. 이 프로젝트는 요청 사이에 자동으로 간격을 두고, 한도 초과 시 잠시 기다렸다가 재시도하도록 되어 있습니다(`scripts/collect-and-summarize.js`의 `GEMINI_CALL_INTERVAL_MS`, `summarizeWithRetry`). 그래도 하루에 신규 기사가 너무 많으면(`MAX_ARTICLES_PER_RUN`, 기본 60건) 그날은 상위 60건만 요약하고 나머지는 건너뜁니다. 필요하면 이 값들을 조정할 수 있습니다.
+Gemini 무료 티어는 모델당 분당 요청 수(5회)가 제한되어 있습니다. 이 프로젝트는 요청 사이에 15초 간격을 두고, 한도 초과 시 잠시 기다렸다가 재시도하도록 되어 있습니다(`scripts/collect-and-summarize.js`의 `GEMINI_CALL_INTERVAL_MS`, `summarizeWithRetry`). 그래도 하루에 신규 기사가 너무 많으면 한 번 실행에서 최대 `MAX_ARTICLES_PER_RUN`(기본 30건)까지만, 그리고 요약 단계 전체가 `SUMMARIZE_TIME_BUDGET_MS`(기본 8분)를 넘으면 그 시점에서 멈추고 나머지는 건너뜁니다. 실행 자체도 GitHub Actions에서 15분(`timeout-minutes`)이 지나면 강제 종료되어, 어떤 경우에도 몇 시간씩 걸리는 일은 없습니다.
 
 **로컬 컴퓨터에서 미리 테스트해보고 싶어요.**
 1. `.env.example` 파일을 복사해서 `.env`로 저장하고, 발급받은 키 3개를 입력
