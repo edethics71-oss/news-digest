@@ -33,6 +33,11 @@ const SUMMARIZE_TIME_BUDGET_MS = 9 * 60 * 1000; // 요약 단계 전체에 쓸 �
 // 모르는 언론사도 포함하고 싶으면 false로 바꾸면 된다.
 const ONLY_KNOWN_PRESS = true;
 
+// true면 여러 언론사가 같은 소식을 보도했을 때(제목+본문 유사도가 DUPLICATE_SIMILARITY_THRESHOLD 이상)
+// PRESS_MAP에 먼저 나열된(우선순위 높은) 언론사 기사 하나만 남기고 나머지는 아예 수집하지 않는다.
+const DEDUPE_SIMILAR_ARTICLES = true;
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.5;
+
 // 도메인 -> 언론사명 매핑. 목록에 없는 언론사는 도메인 이름을 그대로 표시한다.
 // 필요하면 이 목록에 언론사를 자유롭게 추가하면 된다.
 const PRESS_MAP = {
@@ -141,6 +146,51 @@ function isKnownPress(link) {
   return matchKnownPress(link) !== null;
 }
 
+// PRESS_MAP에 나열된 순서를 그대로 언론사 우선순위로 쓴다(먼저 나올수록 우선).
+const PRESS_PRIORITY = Object.values(PRESS_MAP);
+
+function pressPriorityRank(link) {
+  const press = matchKnownPress(link);
+  const rank = PRESS_PRIORITY.indexOf(press);
+  return rank === -1 ? PRESS_PRIORITY.length : rank;
+}
+
+function tokenize(text) {
+  return new Set((text || "").split(/[^\p{L}\p{N}]+/u).filter((t) => t.length > 1));
+}
+
+function jaccardSimilarity(setA, setB) {
+  if (setA.size === 0 || setB.size === 0) return 0;
+  let intersection = 0;
+  for (const token of setA) {
+    if (setB.has(token)) intersection++;
+  }
+  return intersection / (setA.size + setB.size - intersection);
+}
+
+// 같은 소식을 여러 언론사가 보도하면(제목+본문 유사도가 threshold 이상), 우선순위가 가장 높은
+// 언론사 기사 하나만 남기고 나머지는 제외한다. 우선순위 높은 기사부터 순서대로 채택하면서,
+// 이미 채택한 기사와 비슷한 기사는 건너뛰는 방식으로 처리한다.
+function dedupeSimilarArticles(articles, threshold) {
+  const withTokens = articles
+    .map((a) => ({
+      article: a,
+      tokens: tokenize(`${a.title} ${a.description}`),
+      rank: pressPriorityRank(a.link),
+    }))
+    .sort((a, b) => a.rank - b.rank);
+
+  const kept = [];
+  for (const candidate of withTokens) {
+    const isDuplicate = kept.some(
+      (k) => jaccardSimilarity(candidate.tokens, k.tokens) >= threshold
+    );
+    if (!isDuplicate) kept.push(candidate);
+  }
+
+  return kept.map((k) => k.article);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -238,6 +288,14 @@ async function main() {
     candidates = candidates.filter((a) => isKnownPress(a.link));
     console.log(
       `  인지도 있는 언론사만 채택: ${beforeCount}건 → ${candidates.length}건`
+    );
+  }
+
+  if (DEDUPE_SIMILAR_ARTICLES) {
+    const beforeCount = candidates.length;
+    candidates = dedupeSimilarArticles(candidates, DUPLICATE_SIMILARITY_THRESHOLD);
+    console.log(
+      `  유사(중복 보도) 기사 제거: ${beforeCount}건 → ${candidates.length}건`
     );
   }
 
