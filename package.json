@@ -1,0 +1,13 @@
+{
+  "name": "news-digest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "대입/진로 뉴스 자동 수집 및 AI 요약",
+  "scripts": {
+    "collect": "node scripts/collect-and-summarize.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.19.0"
+  }
+}

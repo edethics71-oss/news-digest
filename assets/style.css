@@ -1,0 +1,148 @@
+:root {
+  --bg: #f7f7f8;
+  --card-bg: #ffffff;
+  --text: #1f2328;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-bg: #eef2ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 16px 48px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+}
+
+.page-header {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 0 16px;
+}
+
+.page-header h1 {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.date-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.day-header {
+  width: 100%;
+  text-align: left;
+  padding: 14px 18px;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.day-header:hover {
+  background: var(--accent-bg);
+}
+
+.day-body {
+  display: none;
+  padding: 4px 18px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.day-item.open .day-body {
+  display: block;
+}
+
+.article-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.article-item {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.article-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.article-title {
+  display: block;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.article-title:hover {
+  text-decoration: underline;
+}
+
+.article-summary {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.article-press {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.loading,
+.empty,
+.error {
+  padding: 16px 18px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.page-footer {
+  max-width: 720px;
+  margin: 32px auto 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
