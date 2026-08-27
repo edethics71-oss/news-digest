@@ -94,6 +94,11 @@ function todayKst() {
   return kst.toISOString().slice(0, 10);
 }
 
+// "2028 대입", "2028대입"뿐 아니라 실제 기사에서 훨씬 흔한 "2029학년도 대입" 표현도 인정한다.
+function hasYearBeforeDaeip(article) {
+  return /20\d{2}\s*(학년도)?\s*대입/.test(`${article.title} ${article.description}`);
+}
+
 function normalizeLink(link) {
   return link.split("?")[0].replace(/\/$/, "");
 }
@@ -192,7 +197,10 @@ async function main() {
       clientSecret: NAVER_CLIENT_SECRET,
       targetDate,
     });
-    for (const item of items) {
+    // "대입"은 두 글자라 "부대입대"처럼 무관한 단어 속 부분 문자열로도 잡히는 경우가 있다.
+    // 그래서 이 키워드로 찾은 결과만, 제목/본문에 "2028대입"처럼 연도가 바로 붙어 나올 때만 인정한다.
+    const filtered = keyword === "대입" ? items.filter(hasYearBeforeDaeip) : items;
+    for (const item of filtered) {
       const key = normalizeLink(item.link);
       if (!collected.has(key)) collected.set(key, item);
     }
