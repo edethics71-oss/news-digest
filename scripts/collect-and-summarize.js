@@ -22,11 +22,12 @@ const KEYWORDS = [
   "진로진학",
 ];
 
-// Gemini 무료 티어는 모델당 분당 요청 수(5회)가 제한되어 있다. 아래 값들은 그 한도 안에서 안전하게
-// 동작하면서도, 사용량이 갑자기 몰리는 날에도 실행이 몇 시간씩 걸리지 않도록 상한을 둔 것이다.
-const MAX_ARTICLES_PER_RUN = 30;
-const GEMINI_CALL_INTERVAL_MS = 15000; // 분당 5회(12초 간격) 한도보다 여유 있게
-const SUMMARIZE_TIME_BUDGET_MS = 8 * 60 * 1000; // 요약 단계 전체에 쓸 수 있는 최대 시간
+// gemini-3.5-flash-lite 무료 티어 한도: 분당 15회, 일일 500회 (일반 flash 모델보다 훨씬 넉넉하다).
+// 아래 값들은 그 한도 안에서 안전하게 동작하면서도, 사용량이 갑자기 몰리는 날에도 실행이
+// 지나치게 길어지지 않도록 상한을 둔 것이다.
+const MAX_ARTICLES_PER_RUN = 100;
+const GEMINI_CALL_INTERVAL_MS = 4500; // 분당 15회(4초 간격) 한도보다 여유 있게
+const SUMMARIZE_TIME_BUDGET_MS = 9 * 60 * 1000; // 요약 단계 전체에 쓸 수 있는 최대 시간
 
 // 도메인 -> 언론사명 매핑. 목록에 없는 언론사는 도메인 이름을 그대로 표시한다.
 // 필요하면 이 목록에 언론사를 자유롭게 추가하면 된다.

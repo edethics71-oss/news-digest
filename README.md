@@ -123,7 +123,7 @@ GitHub Actions가 API 키를 안전하게 사용할 수 있도록, 코드가 아
 `.github/workflows/daily.yml` 파일 안의 `cron: "0 12 * * *"` 부분을 수정하면 됩니다. GitHub Actions의 cron 시각은 **UTC(세계표준시) 기준**이며, 한국시간(KST)은 UTC+9시간입니다. 예를 들어 한국시간 오전 7시에 실행하려면 UTC 기준 전날 22시이므로 `"0 22 * * *"`로 설정합니다.
 
 **요약에 사용하는 AI 모델을 바꾸고 싶어요.**
-`scripts/summarize.js` 파일의 `model: "gemini-3.6-flash"` 부분을 원하는 모델 이름으로 바꾸면 됩니다. 모델에 따라 무료 한도와 요약 품질이 달라집니다.
+`scripts/summarize.js` 파일의 `model: "gemini-3.5-flash-lite"` 부분을 원하는 모델 이름으로 바꾸면 됩니다. 모델마다 무료 한도(분당/일일 요청 수)가 크게 다르니, 바꾸기 전에 https://aistudio.google.com/rate-limit 에서 후보 모델의 RPD(일일 한도)를 꼭 확인하세요. "Flash Lite" 계열이 일반 "Flash"보다 한도가 훨씬 넉넉합니다.
 
 **언론사 이름이 도메인 주소(예: xxx.com)로 표시돼요.**
 `scripts/collect-and-summarize.js` 파일 안의 `PRESS_MAP` 목록에 해당 도메인과 언론사명을 한 줄 추가하면 됩니다.
@@ -132,7 +132,9 @@ GitHub Actions가 API 키를 안전하게 사용할 수 있도록, 코드가 아
 `scripts/collect-and-summarize.js` 파일 상단의 `KEYWORDS` 배열에 원하는 키워드를 추가/삭제하면 됩니다. 단, "정시"나 "진로"처럼 일상적으로도 흔히 쓰이는 단어를 단독으로 넣으면(예: "기차가 정시에 도착", "태풍 진로") 대입과 무관한 기사가 대량으로 섞여 들어올 수 있습니다. 되도록 "정시모집", "진로진학"처럼 문맥이 좁혀지는 복합어를 사용하는 것을 권장합니다.
 
 **Gemini 무료 사용량 한도(429 오류)에 걸려요.**
-Gemini 무료 티어는 모델당 분당 요청 수(5회)가 제한되어 있습니다. 이 프로젝트는 요청 사이에 15초 간격을 두고, 한도 초과 시 잠시 기다렸다가 재시도하도록 되어 있습니다(`scripts/collect-and-summarize.js`의 `GEMINI_CALL_INTERVAL_MS`, `summarizeWithRetry`). 그래도 하루에 신규 기사가 너무 많으면 한 번 실행에서 최대 `MAX_ARTICLES_PER_RUN`(기본 30건)까지만, 그리고 요약 단계 전체가 `SUMMARIZE_TIME_BUDGET_MS`(기본 8분)를 넘으면 그 시점에서 멈추고 나머지는 건너뜁니다. 실행 자체도 GitHub Actions에서 15분(`timeout-minutes`)이 지나면 강제 종료되어, 어떤 경우에도 몇 시간씩 걸리는 일은 없습니다.
+Gemini 무료 티어는 모델마다 분당/일일 요청 수 한도가 다릅니다. 일반 "Flash" 모델은 하루 20건 정도로 매우 적어서, 이 프로젝트는 한도가 훨씬 넉넉한 **`gemini-3.5-flash-lite`**(분당 15건, 일일 500건)를 기본값으로 씁니다. 그래도 요청 사이에 4.5초 간격을 두고, 한도 초과 시 잠시 기다렸다가 재시도하도록 되어 있습니다(`scripts/collect-and-summarize.js`의 `GEMINI_CALL_INTERVAL_MS`, `summarizeWithRetry`). 하루에 신규 기사가 너무 많으면 한 번 실행에서 최대 `MAX_ARTICLES_PER_RUN`(기본 100건)까지만, 그리고 요약 단계 전체가 `SUMMARIZE_TIME_BUDGET_MS`(기본 9분)를 넘으면 그 시점에서 멈추고 나머지는 건너뜁니다. 실행 자체도 GitHub Actions에서 15분(`timeout-minutes`)이 지나면 강제 종료되어, 어떤 경우에도 몇 시간씩 걸리는 일은 없습니다.
+
+한도 초과가 계속되면 https://aistudio.google.com/rate-limit 에서 실제 사용량/한도를 직접 확인해보세요 (모델별로 다르고, 화면에 나오는 표시 이름과 코드의 모델 ID가 완전히 같은 표기가 아닐 수 있습니다).
 
 **로컬 컴퓨터에서 미리 테스트해보고 싶어요.**
 1. `.env.example` 파일을 복사해서 `.env`로 저장하고, 발급받은 키 3개를 입력
