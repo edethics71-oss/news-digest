@@ -7,7 +7,13 @@ import { summarizeArticle } from "./summarize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "data");
-const KEYWORDS = ["대입", "수시", "정시", "진로"];
+// "정시"(제 시간에), "진로"(이동 경로) 등은 단독으로 쓰면 대입과 무관한 기사가 대량으로 섞이므로,
+// 대입 관련 문맥으로 좁혀지는 복합어를 사용한다.
+const KEYWORDS = ["대입", "수시모집", "정시모집", "진로진학"];
+
+// Gemini 무료 티어는 모델당 분당 요청 수가 제한되어 있어, 한 번에 처리할 기사 수와 호출 간격을 제한한다.
+const MAX_ARTICLES_PER_RUN = 60;
+const GEMINI_CALL_INTERVAL_MS = 13000;
 
 // 도메인 -> 언론사명 매핑. 목록에 없는 언론사는 도메인 이름을 그대로 표시한다.
 // 필요하면 이 목록에 언론사를 자유롭게 추가하면 된다.
@@ -90,6 +96,33 @@ function guessPress(link) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractRetryDelaySeconds(message) {
+  const match = /"retryDelay":"(\d+)s"/.exec(message || "");
+  return match ? Number(match[1]) : null;
+}
+
+// Gemini 무료 티어 사용량 한도(429 RESOURCE_EXHAUSTED)에 걸리면, 서버가 안내하는 대기 시간만큼 쉬었다가 재시도한다.
+async function summarizeWithRetry(article, client, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await summarizeArticle(article, client);
+    } catch (err) {
+      const isRateLimited = /RESOURCE_EXHAUSTED|"code":429/.test(err.message || "");
+      if (!isRateLimited || attempt === maxRetries) throw err;
+
+      const waitSeconds = (extractRetryDelaySeconds(err.message) ?? 15) + 3;
+      console.log(
+        `  사용량 한도 초과, ${waitSeconds}초 대기 후 재시도합니다. (${attempt + 1}/${maxRetries})`
+      );
+      await sleep(waitSeconds * 1000);
+    }
+  }
+}
+
 function readJson(filePath, fallback) {
   if (!fs.existsSync(filePath)) return fallback;
   return JSON.parse(fs.readFileSync(filePath, "utf-8"));
@@ -158,12 +191,21 @@ async function main() {
     `  검색 결과 ${collected.size}건 중 신규 기사 ${newArticles.length}건을 요약합니다.`
   );
 
+  let articlesToSummarize = newArticles;
+  if (articlesToSummarize.length > MAX_ARTICLES_PER_RUN) {
+    console.log(
+      `  신규 기사가 많아(${articlesToSummarize.length}건), 이번 실행에서는 최신 ${MAX_ARTICLES_PER_RUN}건만 요약합니다.`
+    );
+    articlesToSummarize = articlesToSummarize.slice(0, MAX_ARTICLES_PER_RUN);
+  }
+
   const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   const summarized = [];
 
-  for (const article of newArticles) {
+  for (let i = 0; i < articlesToSummarize.length; i++) {
+    const article = articlesToSummarize[i];
     try {
-      const summary = await summarizeArticle(article, client);
+      const summary = await summarizeWithRetry(article, client);
       summarized.push({
         title: article.title,
         summary,
@@ -171,9 +213,13 @@ async function main() {
         press: guessPress(article.link),
         pubDate: article.pubDate,
       });
-      console.log(`  요약 완료: ${article.title}`);
+      console.log(`  요약 완료 (${i + 1}/${articlesToSummarize.length}): ${article.title}`);
     } catch (err) {
       console.error(`  요약 실패(건너뜀): ${article.title} - ${err.message}`);
+    }
+
+    if (i < articlesToSummarize.length - 1) {
+      await sleep(GEMINI_CALL_INTERVAL_MS);
     }
   }
 

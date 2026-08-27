@@ -13,7 +13,10 @@ export async function summarizeArticle({ title, description }, client) {
     contents: `제목: ${title}\n\n기사 스니펫: ${description}\n\n위 기사 내용을 2~3문장으로 새로 표현하여 요약해줘.`,
     config: {
       systemInstruction: SYSTEM_PROMPT,
-      maxOutputTokens: 400,
+      maxOutputTokens: 500,
+      // 단순 요약 작업이라 "생각(thinking)" 모드는 끈다. 켜두면 사고 과정이 출력 토큰 예산을 먼저 써버려
+      // 정작 답변이 중간에 잘리는 문제가 생긴다.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
 
