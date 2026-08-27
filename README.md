@@ -123,7 +123,7 @@ GitHub Actions가 API 키를 안전하게 사용할 수 있도록, 코드가 아
 `.github/workflows/daily.yml` 파일 안의 `cron: "0 12 * * *"` 부분을 수정하면 됩니다. GitHub Actions의 cron 시각은 **UTC(세계표준시) 기준**이며, 한국시간(KST)은 UTC+9시간입니다. 예를 들어 한국시간 오전 7시에 실행하려면 UTC 기준 전날 22시이므로 `"0 22 * * *"`로 설정합니다.
 
 **요약에 사용하는 AI 모델을 바꾸고 싶어요.**
-`scripts/summarize.js` 파일의 `model: "gemini-2.5-flash"` 부분을 원하는 모델 이름으로 바꾸면 됩니다. 모델에 따라 무료 한도와 요약 품질이 달라집니다.
+`scripts/summarize.js` 파일의 `model: "gemini-3.6-flash"` 부분을 원하는 모델 이름으로 바꾸면 됩니다. 모델에 따라 무료 한도와 요약 품질이 달라집니다.
 
 **언론사 이름이 도메인 주소(예: xxx.com)로 표시돼요.**
 `scripts/collect-and-summarize.js` 파일 안의 `PRESS_MAP` 목록에 해당 도메인과 언론사명을 한 줄 추가하면 됩니다.

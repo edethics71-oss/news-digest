@@ -9,7 +9,7 @@ const SYSTEM_PROMPT = `당신은 한국 교육/대입 뉴스를 요약하는 도
 // 기사 1건을 Gemini API로 요약한다. description은 네이버 뉴스 검색 결과의 짧은 스니펫이다.
 export async function summarizeArticle({ title, description }, client) {
   const response = await client.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.6-flash",
     contents: `제목: ${title}\n\n기사 스니펫: ${description}\n\n위 기사 내용을 2~3문장으로 새로 표현하여 요약해줘.`,
     config: {
       systemInstruction: SYSTEM_PROMPT,
