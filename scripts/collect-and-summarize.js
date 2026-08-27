@@ -29,6 +29,10 @@ const MAX_ARTICLES_PER_RUN = 100;
 const GEMINI_CALL_INTERVAL_MS = 4500; // 분당 15회(4초 간격) 한도보다 여유 있게
 const SUMMARIZE_TIME_BUDGET_MS = 9 * 60 * 1000; // 요약 단계 전체에 쓸 수 있는 최대 시간
 
+// true면 아래 PRESS_MAP에 등록된(인지도 있는) 언론사 기사만 채택한다.
+// 모르는 언론사도 포함하고 싶으면 false로 바꾸면 된다.
+const ONLY_KNOWN_PRESS = true;
+
 // 도메인 -> 언론사명 매핑. 목록에 없는 언론사는 도메인 이름을 그대로 표시한다.
 // 필요하면 이 목록에 언론사를 자유롭게 추가하면 된다.
 const PRESS_MAP = {
@@ -61,6 +65,13 @@ const PRESS_MAP = {
   "eduinnews.co.kr": "에듀인뉴스",
   "unn.net": "한국대학신문",
   "edudonga.com": "에듀동아",
+  "fnnews.com": "파이낸셜뉴스",
+  "heraldcorp.com": "헤럴드경제",
+  "newspim.com": "뉴스핌",
+  "nocutnews.co.kr": "노컷뉴스",
+  "ohmynews.com": "오마이뉴스",
+  "etnews.com": "전자신문",
+  "koreaherald.com": "코리아헤럴드",
 };
 
 function loadEnvFile() {
@@ -103,16 +114,31 @@ function normalizeLink(link) {
   return link.split("?")[0].replace(/\/$/, "");
 }
 
-function guessPress(link) {
+// PRESS_MAP에 등록된 언론사인 경우에만 이름을 돌려주고, 아니면 null을 돌려준다.
+function matchKnownPress(link) {
   try {
     const host = new URL(link).hostname.replace(/^www\./, "");
     for (const domain of Object.keys(PRESS_MAP)) {
       if (host === domain || host.endsWith(`.${domain}`)) return PRESS_MAP[domain];
     }
-    return host;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function guessPress(link) {
+  const known = matchKnownPress(link);
+  if (known) return known;
+  try {
+    return new URL(link).hostname.replace(/^www\./, "");
   } catch {
     return "알 수 없음";
   }
+}
+
+function isKnownPress(link) {
+  return matchKnownPress(link) !== null;
 }
 
 function sleep(ms) {
@@ -206,7 +232,16 @@ async function main() {
     }
   }
 
-  const newArticles = [...collected.values()].filter(
+  let candidates = [...collected.values()];
+  if (ONLY_KNOWN_PRESS) {
+    const beforeCount = candidates.length;
+    candidates = candidates.filter((a) => isKnownPress(a.link));
+    console.log(
+      `  인지도 있는 언론사만 채택: ${beforeCount}건 → ${candidates.length}건`
+    );
+  }
+
+  const newArticles = candidates.filter(
     (a) => !existingLinks.has(normalizeLink(a.link))
   );
 
